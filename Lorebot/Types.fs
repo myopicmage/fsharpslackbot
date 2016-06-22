@@ -27,11 +27,17 @@ type User = {
     name : string
 }
 
+type Channel = {
+    id : string
+    name : string
+}
+
 
 type SlackBotResponse = {
     ok : bool
     url : string
     users : User list
+    channels : Channel list
 }
 
 type Webhook = {
