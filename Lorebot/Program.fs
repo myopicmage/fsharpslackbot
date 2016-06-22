@@ -28,7 +28,7 @@ let messageParse arg (users : User list) (ws : WebSocket) =
 let main argv = 
     use client = new HttpClient()
     client.BaseAddress <- Uri("https://slack.com/")
-    let api = "api/rtm.start?token=xoxp-13038755555-13039040003-53411645204-804d159ae0&no_unreads=true&pretty=1"
+    let api = "api/rtm.start?token=nooooooope&no_unreads=true&pretty=1"
     let responseTask = client.PostAsync(api, new StringContent(""))
     responseTask.Wait()
 
