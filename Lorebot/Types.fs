@@ -82,6 +82,13 @@ type PingResponse = {
     time : DateTime
 }
 
+type Msg = {
+    id : int
+    ``type`` : string
+    channel : string
+    text : string
+}
+
 let makeOpt x =
     match box x with
     | null -> None

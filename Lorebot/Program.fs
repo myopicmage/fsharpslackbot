@@ -29,7 +29,7 @@ let messageParse (arg : MessageEventArgs) (users : User list) (ws : WebSocket) (
         | Some(item) -> item.name
         | None -> channel
 
-    let handleMessage m =
+    let handleMessage (m : SlackMessage) =
         let mOpt = m.text |> makeOpt
 
         match mOpt with
@@ -65,11 +65,33 @@ let messageParse (arg : MessageEventArgs) (users : User list) (ws : WebSocket) (
     | None -> badMessage arg
     | Some(m) -> goodMessage m
 
+let runExit (ws : WebSocket) =
+    ws.Close()
+
+    Environment.Exit(0)
+
+let awaitMessage (ws : WebSocket) (channels : Channel list) (users : User list) =
+    let getChannel channel =
+        let item = channels.SingleOrDefault(fun x -> x.name = channel) |> makeOpt
+
+        match item with
+        | Some(item) -> item.id
+        | None -> channel
+
+    let command = Console.ReadLine()
+
+    match command with
+    | "exit" -> runExit ws
+    | _ ->
+        let channel = getChannel "programming"
+        JsonConvert.SerializeObject({ Msg.``type`` = "message"; Msg.text = command; Msg.id = messageId; Msg.channel = channel;}) |> ws.Send
+        messageId <- messageId + 1
+
 [<EntryPoint>]
 let main argv = 
     use client = new HttpClient()
     client.BaseAddress <- Uri("https://slack.com/")
-    let api = "api/rtm.start?token=nooooooope&no_unreads=true&pretty=1"
+    let api = ""
     let responseTask = client.PostAsync(api, new StringContent(""))
     responseTask.Wait()
 
@@ -84,5 +106,7 @@ let main argv =
     ws.EmitOnPing <- true
     ws.OnMessage.Add(fun x -> (messageParse x sr.users ws sr.channels))
 
-    Console.ReadKey(true) |> ignore
+    while true do
+        awaitMessage ws sr.channels sr.users
+
     0
