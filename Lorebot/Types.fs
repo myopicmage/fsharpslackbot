@@ -70,4 +70,19 @@ type SlackMessage = {
     channel : string
     user : string
     ``type`` : string
+    reaction : string
+    item_user : string
+    name : string
+    value : string
 }
+
+type PingResponse = {
+    id : int
+    ``type`` : string
+    time : DateTime
+}
+
+let makeOpt x =
+    match box x with
+    | null -> None
+    | _ -> Some(x)

@@ -6,29 +6,70 @@ open Newtonsoft.Json
 open System.Text
 open System.Linq
 
-let messageParse arg (users : User list) (ws : WebSocket) = 
-    let message = JsonConvert.DeserializeObject<SlackMessage>(arg)
-    
-    let getUser user = 
-        let item = users.Single(fun x -> x.id = user)
-        item.name
+let mutable messageId = 1
 
-    match message.``type`` with
-    | "message" -> 
-        match message.text.StartsWith("@myopicm") with
-        | true -> printfn "%A WANTS YOUR ATTENTION: %A" (getUser message.user) message.text
-        | false -> printfn "%A: %A" (getUser message.user) message.text
-    | "user_typing" -> ()
-    | "channel_marked" -> ()
-    | "presence_change" -> ()
-    | "reconnect_url" -> ()
-    | _ -> printfn "%A: %A" message.user message.``type``
+let messageParse (arg : MessageEventArgs) (users : User list) (ws : WebSocket) (channels : Channel list) = 
+    let message = JsonConvert.DeserializeObject<SlackMessage>(arg.Data) |> makeOpt
+
+    let sendMessage toSend =
+        ws.Send(JsonConvert.SerializeObject(toSend))
+        messageId <- messageId + 1
+
+    let getUser user = 
+        let item = users.SingleOrDefault(fun x -> x.id = user) |> makeOpt
+
+        match item with
+        | Some(item) -> item.name
+        | None -> user
+
+    let getChannel channel =
+        let item = channels.SingleOrDefault(fun x -> x.id = channel) |> makeOpt
+
+        match item with
+        | Some(item) -> item.name
+        | None -> channel
+
+    let handleMessage m =
+        let mOpt = m.text |> makeOpt
+
+        match mOpt with
+        | Some(x) -> printfn "[%A] %A: %A" (getChannel m.channel) (getUser m.user) x
+        | None -> printfn "[System] %A" m
+
+    let handleReaction m =
+        let user = getUser m.user
+
+        printfn "[System] %A added a reaction" user
+    
+    let badMessage (m : MessageEventArgs) = 
+        match m.IsPing with
+        | true -> 
+            sendMessage { ``type`` = "ping"; id = messageId; time = DateTime.Now } 
+            printfn "[System] Ping?"
+        | false -> printfn "[Error] %A" m
+
+    let goodMessage (m : SlackMessage) = 
+        match m.``type`` with
+        | "hello" -> printfn "[System] Hello, you're now connected."
+        | "pong" -> printfn "[System] Pong!"
+        | "message" -> handleMessage m
+        | "user_typing" -> ()
+        | "channel_marked" -> ()
+        | "presence_change" -> ()
+        | "reconnect_url" -> ()
+        | "reaction_added" -> handleReaction m
+        | "pref_change" -> printfn "[System] Your preference has been changed: %A to %A" m.name m.value
+        | _ -> printfn "%A" arg
+
+    match message with
+    | None -> badMessage arg
+    | Some(m) -> goodMessage m
 
 [<EntryPoint>]
 let main argv = 
     use client = new HttpClient()
     client.BaseAddress <- Uri("https://slack.com/")
-    let api = "api/rtm.start?token=xoxp-13038755555-13039040003-53411645204-804d159ae0&no_unreads=true&pretty=1"
+    let api = "api/rtm.start?token=xoxp-13038755555-13039040003-53405801107-ecb1dda41f&no_unreads=true&pretty=1"
     let responseTask = client.PostAsync(api, new StringContent(""))
     responseTask.Wait()
 
@@ -40,7 +81,8 @@ let main argv =
 
     use ws = new WebSocket(sr.url)
     ws.Connect()
-    ws.OnMessage.Add(fun x -> (messageParse x.Data sr.users ws))
+    ws.EmitOnPing <- true
+    ws.OnMessage.Add(fun x -> (messageParse x sr.users ws sr.channels))
 
     Console.ReadKey(true) |> ignore
     0
