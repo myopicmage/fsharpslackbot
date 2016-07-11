@@ -91,7 +91,7 @@ let awaitMessage (ws : WebSocket) (channels : Channel list) (users : User list) 
 let main argv = 
     use client = new HttpClient()
     client.BaseAddress <- Uri("https://slack.com/")
-    let api = ""
+    let api = String.Format("api/rtm.start?token={0}&no_unreads=true&pretty=1", settings.Token)
     let responseTask = client.PostAsync(api, new StringContent(""))
     responseTask.Wait()
 

@@ -2,6 +2,7 @@
 
 open System.Collections.Generic
 open System
+open FSharp.Configuration
 
 type Self = {
     id : string
@@ -93,3 +94,5 @@ let makeOpt x =
     match box x with
     | null -> None
     | _ -> Some(x)
+
+type settings = AppSettings<"app.config">
